@@ -4331,4 +4331,16 @@ typedef struct DropSubscriptionStmt
 	DropBehavior behavior;		/* RESTRICT or CASCADE behavior */
 } DropSubscriptionStmt;
 
+/* ----------------------
+ *      Insert Rule Statement (pg_orca)
+ *
+ *      INSERT RULE 'rule_name' AS 'rule_text'
+ * ---------------------- */
+typedef struct InsertRuleStmt
+{
+    NodeTag     type;
+    char       *rule_name;      /* rule name (string) */
+    char       *rule_text;      /* rule DSL text (string) */
+} InsertRuleStmt;
+
 #endif							/* PARSENODES_H */

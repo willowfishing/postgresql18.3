@@ -294,7 +294,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 		DropdbStmt DropTableSpaceStmt
 		DropTransformStmt
 		DropUserMappingStmt ExplainStmt FetchStmt
-		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
+		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt InsertRuleStmt
 		ListenStmt LoadStmt LockStmt MergeStmt NotifyStmt ExplainableStmt PreparableStmt
 		CreateFunctionStmt AlterFunctionStmt ReindexStmt RemoveAggrStmt
 		RemoveFuncStmt RemoveOperStmt RenameStmt ReturnStmt RevokeStmt RevokeRoleStmt
@@ -1086,6 +1086,7 @@ stmt:
 			| ImportForeignSchemaStmt
 			| IndexStmt
 			| InsertStmt
+			| InsertRuleStmt
 			| ListenStmt
 			| RefreshMatViewStmt
 			| LoadStmt
@@ -12247,6 +12248,16 @@ InsertStmt:
 					$$ = (Node *) $5;
 				}
 		;
+
+InsertRuleStmt:
+            opt_with_clause INSERT RULE Sconst AS Sconst
+                {
+                    InsertRuleStmt *n = makeNode(InsertRuleStmt);
+                    n->rule_name = $4;      /* 第一个 Sconst = 规则名 */
+                    n->rule_text = $6;      /* 第二个 Sconst = 规则文本 */
+                    $$ = (Node *) n;
+                }
+        ;
 
 /*
  * Can't easily make AS optional here, because VALUES in insert_rest would

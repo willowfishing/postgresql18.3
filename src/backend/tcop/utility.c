@@ -208,6 +208,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_RefreshMatViewStmt:
 		case T_RenameStmt:
 		case T_RuleStmt:
+		case T_InsertRuleStmt:
 		case T_SecLabelStmt:
 		case T_TruncateStmt:
 		case T_ViewStmt:
@@ -1666,6 +1667,10 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = DefineRule((RuleStmt *) parsetree, queryString);
 				break;
 
+			case T_InsertRuleStmt:  /* INSERT RULE (pg_orca) */
+                address = ExecInsertRuleStmt(pstate, (InsertRuleStmt *) parsetree);
+                break;
+
 			case T_CreateSeqStmt:
 				address = DefineSequence(pstate, (CreateSeqStmt *) parsetree);
 				break;
@@ -2811,6 +2816,10 @@ CreateCommandTag(Node *parsetree)
 		case T_RuleStmt:
 			tag = CMDTAG_CREATE_RULE;
 			break;
+		
+		case T_InsertRuleStmt:
+            tag = CMDTAG_INSERT;
+            break;
 
 		case T_CreateSeqStmt:
 			tag = CMDTAG_CREATE_SEQUENCE;
@@ -3459,6 +3468,10 @@ GetCommandLogLevel(Node *parsetree)
 		case T_RuleStmt:
 			lev = LOGSTMT_DDL;
 			break;
+
+		case T_InsertRuleStmt:
+            lev = LOGSTMT_MOD;
+            break;
 
 		case T_CreateSeqStmt:
 			lev = LOGSTMT_DDL;

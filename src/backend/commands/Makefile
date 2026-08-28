@@ -64,6 +64,7 @@ OBJS = \
 	vacuum.o \
 	vacuumparallel.o \
 	variable.o \
-	view.o
+	view.o \
+	pg_orca_rule.o
 
 include $(top_srcdir)/src/backend/common.mk
