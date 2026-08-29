@@ -16,17 +16,20 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      # The repository's historical "bin/" ignore rule omitted src/bin from
-      # the initial import.  Restore that unmodified directory from the exact
-      # upstream release so configure and pg_regress can run in CI.
-      - name: Restore upstream frontend programs
+      # The repository's historical unanchored "bin/" and "data/" ignore
+      # rules omitted these source directories from the initial import.
+      # Restore them from the exact upstream release before building.
+      - name: Restore omitted upstream sources
         run: |
           curl --fail --location --silent --show-error \
             https://ftp.postgresql.org/pub/source/v18.3/postgresql-18.3.tar.bz2 \
             --output /tmp/postgresql-18.3.tar.bz2
-          mkdir -p src/bin
           tar -xjf /tmp/postgresql-18.3.tar.bz2 \
-            -C src/bin --strip-components=3 postgresql-18.3/src/bin
+            -C . --strip-components=1 \
+            postgresql-18.3/src/bin \
+            postgresql-18.3/src/pl/plpgsql/src/data \
+            postgresql-18.3/src/test/regress/data \
+            postgresql-18.3/src/timezone/data
 
       - name: Install build dependencies
         run: |
@@ -56,6 +59,7 @@ jobs:
         with:
           name: regression-diffs
           path: |
+            tmp_install/log/
             src/test/regress/regression.diffs
             src/test/regress/log/
           if-no-files-found: ignore
