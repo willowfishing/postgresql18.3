@@ -4332,15 +4332,16 @@ typedef struct DropSubscriptionStmt
 } DropSubscriptionStmt;
 
 /* ----------------------
- *      Insert Rule Statement (pg_orca)
+ *		Insert Rule Statement (pg_orca)
  *
- *      INSERT RULE 'rule_name' AS 'rule_text'
+ *		INSERT RULE 'rule_name' AS 'rule_text'
  * ---------------------- */
 typedef struct InsertRuleStmt
 {
-    NodeTag     type;
-    char       *rule_name;      /* rule name (string) */
-    char       *rule_text;      /* rule DSL text (string) */
+	pg_node_attr(nodetag_number(480))
+	NodeTag		type;
+	char	   *rule_name;		/* rule name (string) */
+	char	   *rule_text;		/* rule DSL text (string) */
 } InsertRuleStmt;
 
 #endif							/* PARSENODES_H */

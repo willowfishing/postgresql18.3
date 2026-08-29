@@ -69,6 +69,7 @@ catalog_headers = [
   'pg_publication_rel.h',
   'pg_subscription.h',
   'pg_subscription_rel.h',
+  'pg_orca_rule.h',
 ]
 
 # The .dat files we need can just be listed alphabetically.
@@ -88,6 +89,7 @@ bki_data = [
   'pg_opclass.dat',
   'pg_operator.dat',
   'pg_opfamily.dat',
+  'pg_orca_rule.dat',
   'pg_proc.dat',
   'pg_range.dat',
   'pg_tablespace.dat',

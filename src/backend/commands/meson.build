@@ -33,6 +33,7 @@ backend_sources += files(
   'matview.c',
   'opclasscmds.c',
   'operatorcmds.c',
+  'pg_orca_rule.c',
   'policy.c',
   'portalcmds.c',
   'prepare.c',

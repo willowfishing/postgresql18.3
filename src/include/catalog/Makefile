@@ -82,7 +82,7 @@ CATALOG_HEADERS := \
 	pg_publication_rel.h \
 	pg_subscription.h \
 	pg_subscription_rel.h \
-	pg_orca_rule.h 
+	pg_orca_rule.h
 
 GENERATED_HEADERS := $(CATALOG_HEADERS:%.h=%_d.h)
 
@@ -114,7 +114,7 @@ POSTGRES_BKI_DATA = \
 	pg_ts_parser.dat \
 	pg_ts_template.dat \
 	pg_type.dat \
-	pg_orca_rule.dat 
+	pg_orca_rule.dat
 
 GENBKI_OUTPUT_FILES = \
 	$(GENERATED_HEADERS) \

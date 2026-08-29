@@ -40,6 +40,7 @@
 #include "commands/extension.h"
 #include "commands/lockcmds.h"
 #include "commands/matview.h"
+#include "commands/pg_orca_rule.h"
 #include "commands/policy.h"
 #include "commands/portalcmds.h"
 #include "commands/prepare.h"
@@ -56,7 +57,6 @@
 #include "commands/user.h"
 #include "commands/vacuum.h"
 #include "commands/view.h"
-#include "commands/pg_orca_rule.h"
 #include "miscadmin.h"
 #include "parser/parse_utilcmd.h"
 #include "postmaster/bgwriter.h"
@@ -731,6 +731,13 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 
 		case T_TruncateStmt:
 			ExecuteTruncate((TruncateStmt *) parsetree);
+			break;
+
+		case T_InsertRuleStmt:
+			/* INSERT RULE does not support event triggers. */
+			ExecInsertRuleStmt((InsertRuleStmt *) parsetree);
+			if (qc)
+				SetQueryCompletion(qc, CMDTAG_INSERT_RULE, 1);
 			break;
 
 		case T_CopyStmt:
@@ -1667,10 +1674,6 @@ ProcessUtilitySlow(ParseState *pstate,
 			case T_RuleStmt:	/* CREATE RULE */
 				address = DefineRule((RuleStmt *) parsetree, queryString);
 				break;
-
-			case T_InsertRuleStmt:  /* INSERT RULE (pg_orca) */
-                address = ExecInsertRuleStmt(pstate, (InsertRuleStmt *) parsetree);
-                break;
 
 			case T_CreateSeqStmt:
 				address = DefineSequence(pstate, (CreateSeqStmt *) parsetree);
@@ -2817,10 +2820,9 @@ CreateCommandTag(Node *parsetree)
 		case T_RuleStmt:
 			tag = CMDTAG_CREATE_RULE;
 			break;
-		
 		case T_InsertRuleStmt:
-            tag = CMDTAG_INSERT;
-            break;
+			tag = CMDTAG_INSERT_RULE;
+			break;
 
 		case T_CreateSeqStmt:
 			tag = CMDTAG_CREATE_SEQUENCE;
@@ -3471,8 +3473,8 @@ GetCommandLogLevel(Node *parsetree)
 			break;
 
 		case T_InsertRuleStmt:
-            lev = LOGSTMT_MOD;
-            break;
+			lev = LOGSTMT_DDL;
+			break;
 
 		case T_CreateSeqStmt:
 			lev = LOGSTMT_DDL;

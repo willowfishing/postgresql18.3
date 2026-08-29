@@ -45,6 +45,7 @@ OBJS = \
 	matview.o \
 	opclasscmds.o \
 	operatorcmds.o \
+	pg_orca_rule.o \
 	policy.o \
 	portalcmds.o \
 	prepare.o \
@@ -64,7 +65,6 @@ OBJS = \
 	vacuum.o \
 	vacuumparallel.o \
 	variable.o \
-	view.o \
-	pg_orca_rule.o
+	view.o
 
 include $(top_srcdir)/src/backend/common.mk

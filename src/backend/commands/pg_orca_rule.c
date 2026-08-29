@@ -13,13 +13,11 @@
 #include "postgres.h"
 
 #include "access/htup_details.h"
-#include "access/xact.h"
 #include "access/table.h"
 #include "catalog/indexing.h"
 #include "catalog/pg_orca_rule.h"
 #include "commands/pg_orca_rule.h"
 #include "miscadmin.h"
-#include "parser/parse_node.h"
 #include "utils/builtins.h"
 #include "utils/rel.h"
 
@@ -27,11 +25,10 @@
  * ExecInsertRuleStmt
  *		INSERT RULE 'rule_name' AS 'rule_text'
  *
- *		Superuser-only; the rule text is stored verbatim (syntax
- *		validation is delegated to the ORCA extension via a callback).
+ *		Superuser-only; the rule text is stored verbatim.
  */
-ObjectAddress
-ExecInsertRuleStmt(ParseState *pstate, InsertRuleStmt *stmt)
+void
+ExecInsertRuleStmt(InsertRuleStmt *stmt)
 {
 	Relation	rel;
 	Oid			ruleoid;
@@ -39,7 +36,6 @@ ExecInsertRuleStmt(ParseState *pstate, InsertRuleStmt *stmt)
 	Datum		values[Natts_pg_orca_rule];
 	bool		nulls[Natts_pg_orca_rule];
 	NameData	rname;
-	ObjectAddress myself;
 
 	if (!superuser())
 		ereport(ERROR,
@@ -51,6 +47,12 @@ ExecInsertRuleStmt(ParseState *pstate, InsertRuleStmt *stmt)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("rule name must not be empty")));
+	if (strlen(stmt->rule_name) >= NAMEDATALEN)
+		ereport(ERROR,
+				(errcode(ERRCODE_NAME_TOO_LONG),
+				 errmsg("rule name is too long"),
+				 errdetail("Rule names must be less than %d bytes.",
+						   NAMEDATALEN)));
 	if (stmt->rule_text == NULL || stmt->rule_text[0] == '\0')
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -75,10 +77,5 @@ ExecInsertRuleStmt(ParseState *pstate, InsertRuleStmt *stmt)
 	CatalogTupleInsert(rel, tup);
 	heap_freetuple(tup);
 
-	CommandCounterIncrement();
-
 	table_close(rel, RowExclusiveLock);
-
-	ObjectAddressSet(myself, OrcaRuleRelationId, ruleoid);
-	return myself;
 }

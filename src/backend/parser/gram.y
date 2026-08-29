@@ -12250,14 +12250,17 @@ InsertStmt:
 		;
 
 InsertRuleStmt:
-            opt_with_clause INSERT RULE Sconst AS Sconst
-                {
-                    InsertRuleStmt *n = makeNode(InsertRuleStmt);
-                    n->rule_name = $4;      /* 第一个 Sconst = 规则名 */
-                    n->rule_text = $6;      /* 第二个 Sconst = 规则文本 */
-                    $$ = (Node *) n;
-                }
-        ;
+			opt_with_clause INSERT RULE Sconst AS Sconst
+				{
+					InsertRuleStmt *n = makeNode(InsertRuleStmt);
+
+					if ($1 != NULL)
+						parser_yyerror("WITH is not supported for INSERT RULE");
+					n->rule_name = $4;
+					n->rule_text = $6;
+					$$ = (Node *) n;
+				}
+		;
 
 /*
  * Can't easily make AS optional here, because VALUES in insert_rest would
