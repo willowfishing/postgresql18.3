@@ -1,0 +1,12 @@
+#----------------------------------------------------------------------
+#
+# pg_orca_rule.dat
+#    Initial contents of the pg_orca_rule system catalog.
+#
+# src/include/catalog/pg_orca_rule.dat
+#
+#----------------------------------------------------------------------
+
+[
+
+]

@@ -45,6 +45,7 @@ OBJS = \
 	matview.o \
 	opclasscmds.o \
 	operatorcmds.o \
+	pg_orca_rule.o \
 	policy.o \
 	portalcmds.o \
 	prepare.o \

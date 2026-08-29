@@ -40,6 +40,7 @@
 #include "commands/extension.h"
 #include "commands/lockcmds.h"
 #include "commands/matview.h"
+#include "commands/pg_orca_rule.h"
 #include "commands/policy.h"
 #include "commands/portalcmds.h"
 #include "commands/prepare.h"
@@ -208,6 +209,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_RefreshMatViewStmt:
 		case T_RenameStmt:
 		case T_RuleStmt:
+		case T_InsertRuleStmt:
 		case T_SecLabelStmt:
 		case T_TruncateStmt:
 		case T_ViewStmt:
@@ -729,6 +731,13 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 
 		case T_TruncateStmt:
 			ExecuteTruncate((TruncateStmt *) parsetree);
+			break;
+
+		case T_InsertRuleStmt:
+			/* INSERT RULE does not support event triggers. */
+			ExecInsertRuleStmt((InsertRuleStmt *) parsetree);
+			if (qc)
+				SetQueryCompletion(qc, CMDTAG_INSERT_RULE, 1);
 			break;
 
 		case T_CopyStmt:
@@ -2811,6 +2820,9 @@ CreateCommandTag(Node *parsetree)
 		case T_RuleStmt:
 			tag = CMDTAG_CREATE_RULE;
 			break;
+		case T_InsertRuleStmt:
+			tag = CMDTAG_INSERT_RULE;
+			break;
 
 		case T_CreateSeqStmt:
 			tag = CMDTAG_CREATE_SEQUENCE;
@@ -3457,6 +3469,10 @@ GetCommandLogLevel(Node *parsetree)
 			break;
 
 		case T_RuleStmt:
+			lev = LOGSTMT_DDL;
+			break;
+
+		case T_InsertRuleStmt:
 			lev = LOGSTMT_DDL;
 			break;
 

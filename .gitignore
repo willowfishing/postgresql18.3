@@ -47,6 +47,5 @@ lib*.pc
 log/
 bin/
 .vscode
-.github
 .claude
 data/

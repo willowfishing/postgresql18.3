@@ -1,0 +1,61 @@
+name: PostgreSQL CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      # The repository's historical "bin/" ignore rule omitted src/bin from
+      # the initial import.  Restore that unmodified directory from the exact
+      # upstream release so configure and pg_regress can run in CI.
+      - name: Restore upstream frontend programs
+        run: |
+          curl --fail --location --silent --show-error \
+            https://ftp.postgresql.org/pub/source/v18.3/postgresql-18.3.tar.bz2 \
+            --output /tmp/postgresql-18.3.tar.bz2
+          mkdir -p src/bin
+          tar -xjf /tmp/postgresql-18.3.tar.bz2 \
+            -C src/bin --strip-components=3 postgresql-18.3/src/bin
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            bison flex libreadline-dev zlib1g-dev
+
+      - name: Configure assertion build
+        run: |
+          ./configure \
+            --enable-cassert \
+            --enable-debug \
+            --without-icu
+
+      - name: Build PostgreSQL
+        run: make -j2 world-bin
+
+      - name: Check catalog OIDs
+        run: perl src/include/catalog/duplicate_oids
+
+      - name: Run core regression tests
+        run: make -C src/test/regress check
+
+      - name: Upload regression diffs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: regression-diffs
+          path: |
+            src/test/regress/regression.diffs
+            src/test/regress/log/
+          if-no-files-found: ignore

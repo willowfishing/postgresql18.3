@@ -294,7 +294,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 		DropdbStmt DropTableSpaceStmt
 		DropTransformStmt
 		DropUserMappingStmt ExplainStmt FetchStmt
-		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
+		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt InsertRuleStmt
 		ListenStmt LoadStmt LockStmt MergeStmt NotifyStmt ExplainableStmt PreparableStmt
 		CreateFunctionStmt AlterFunctionStmt ReindexStmt RemoveAggrStmt
 		RemoveFuncStmt RemoveOperStmt RenameStmt ReturnStmt RevokeStmt RevokeRoleStmt
@@ -1086,6 +1086,7 @@ stmt:
 			| ImportForeignSchemaStmt
 			| IndexStmt
 			| InsertStmt
+			| InsertRuleStmt
 			| ListenStmt
 			| RefreshMatViewStmt
 			| LoadStmt
@@ -12245,6 +12246,19 @@ InsertStmt:
 					$5->returningClause = $7;
 					$5->withClause = $1;
 					$$ = (Node *) $5;
+				}
+		;
+
+InsertRuleStmt:
+			opt_with_clause INSERT RULE Sconst AS Sconst
+				{
+					InsertRuleStmt *n = makeNode(InsertRuleStmt);
+
+					if ($1 != NULL)
+						parser_yyerror("WITH is not supported for INSERT RULE");
+					n->rule_name = $4;
+					n->rule_text = $6;
+					$$ = (Node *) n;
 				}
 		;
 
