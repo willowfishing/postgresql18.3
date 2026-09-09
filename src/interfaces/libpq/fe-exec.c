@@ -3853,6 +3853,10 @@ PQcmdTuples(PGresult *res)
 			goto interpret_error;	/* no space? */
 		p++;
 	}
+	/* Without this, psql reports "could not interpret result from server: UPDATE RULE 1". */
+	else if (strncmp(res->cmdStatus, "DELETE RULE ", 12) == 0 ||
+			 strncmp(res->cmdStatus, "UPDATE RULE ", 12) == 0)
+		p = res->cmdStatus + 12;
 	else if (strncmp(res->cmdStatus, "SELECT ", 7) == 0 ||
 			 strncmp(res->cmdStatus, "DELETE ", 7) == 0 ||
 			 strncmp(res->cmdStatus, "UPDATE ", 7) == 0)

@@ -4,5 +4,7 @@
 #include "nodes/parsenodes.h"
 
 extern void ExecInsertRuleStmt(InsertRuleStmt *stmt);
+extern void ExecDeleteRuleStmt(DeleteRuleStmt *stmt);
+extern void ExecUpdateRuleStmt(UpdateRuleStmt *stmt);
 
 #endif							/* PG_ORCA_RULE_H_CMDS */

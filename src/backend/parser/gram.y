@@ -294,7 +294,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 		DropdbStmt DropTableSpaceStmt
 		DropTransformStmt
 		DropUserMappingStmt ExplainStmt FetchStmt
-		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt InsertRuleStmt
+		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt InsertRuleStmt DeleteRuleStmt UpdateRuleStmt
 		ListenStmt LoadStmt LockStmt MergeStmt NotifyStmt ExplainableStmt PreparableStmt
 		CreateFunctionStmt AlterFunctionStmt ReindexStmt RemoveAggrStmt
 		RemoveFuncStmt RemoveOperStmt RenameStmt ReturnStmt RevokeStmt RevokeRoleStmt
@@ -1087,6 +1087,8 @@ stmt:
 			| IndexStmt
 			| InsertStmt
 			| InsertRuleStmt
+			| DeleteRuleStmt
+			| UpdateRuleStmt
 			| ListenStmt
 			| RefreshMatViewStmt
 			| LoadStmt
@@ -12257,6 +12259,31 @@ InsertRuleStmt:
 					if ($1 != NULL)
 						parser_yyerror("WITH is not supported for INSERT RULE");
 					n->rule_name = $4;
+					n->rule_text = $6;
+					$$ = (Node *) n;
+				}
+		;
+
+DeleteRuleStmt:
+			opt_with_clause DELETE_P RULE ICONST
+				{
+					DeleteRuleStmt *n = makeNode(DeleteRuleStmt);
+
+					if ($1 != NULL)
+						parser_yyerror("WITH is not supported for DELETE RULE");
+					n->rule_id = $4;
+					$$ = (Node *) n;
+				}
+		;
+
+UpdateRuleStmt:
+			opt_with_clause UPDATE RULE ICONST AS Sconst
+				{
+					UpdateRuleStmt *n = makeNode(UpdateRuleStmt);
+
+					if ($1 != NULL)
+						parser_yyerror("WITH is not supported for UPDATE RULE");
+					n->rule_id = $4;
 					n->rule_text = $6;
 					$$ = (Node *) n;
 				}

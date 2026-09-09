@@ -4344,4 +4344,29 @@ typedef struct InsertRuleStmt
 	char	   *rule_text;		/* rule DSL text (string) */
 } InsertRuleStmt;
 
+/* ----------------------
+ *		Delete Rule Statement (pg_orca)
+ *
+ *		DELETE RULE <id>
+ * ---------------------- */
+typedef struct DeleteRuleStmt
+{
+	pg_node_attr(nodetag_number(481))
+	NodeTag		type;
+	int64		rule_id;		/* rule id to delete */
+} DeleteRuleStmt;
+
+/* ----------------------
+ *		Update Rule Statement (pg_orca)
+ *
+ *		UPDATE RULE <id> AS 'rule_text'
+ * ---------------------- */
+typedef struct UpdateRuleStmt
+{
+	pg_node_attr(nodetag_number(482))
+	NodeTag		type;
+	int64		rule_id;		/* rule id to update */
+	char	   *rule_text;		/* new rule DSL text */
+} UpdateRuleStmt;
+
 #endif							/* PARSENODES_H */

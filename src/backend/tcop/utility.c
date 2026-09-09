@@ -210,6 +210,8 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_RenameStmt:
 		case T_RuleStmt:
 		case T_InsertRuleStmt:
+		case T_DeleteRuleStmt:
+		case T_UpdateRuleStmt:
 		case T_SecLabelStmt:
 		case T_TruncateStmt:
 		case T_ViewStmt:
@@ -738,6 +740,20 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			ExecInsertRuleStmt((InsertRuleStmt *) parsetree);
 			if (qc)
 				SetQueryCompletion(qc, CMDTAG_INSERT_RULE, 1);
+			break;
+
+		case T_DeleteRuleStmt:
+			/* DELETE RULE does not support event triggers. */
+			ExecDeleteRuleStmt((DeleteRuleStmt *) parsetree);
+			if (qc)
+				SetQueryCompletion(qc, CMDTAG_DELETE_RULE, 1);
+			break;
+
+		case T_UpdateRuleStmt:
+			/* UPDATE RULE does not support event triggers. */
+			ExecUpdateRuleStmt((UpdateRuleStmt *) parsetree);
+			if (qc)
+				SetQueryCompletion(qc, CMDTAG_UPDATE_RULE, 1);
 			break;
 
 		case T_CopyStmt:
@@ -2820,8 +2836,17 @@ CreateCommandTag(Node *parsetree)
 		case T_RuleStmt:
 			tag = CMDTAG_CREATE_RULE;
 			break;
+
 		case T_InsertRuleStmt:
 			tag = CMDTAG_INSERT_RULE;
+			break;
+		
+		case T_DeleteRuleStmt:
+			tag = CMDTAG_DELETE_RULE;
+			break;
+
+		case T_UpdateRuleStmt:
+			tag = CMDTAG_UPDATE_RULE;
 			break;
 
 		case T_CreateSeqStmt:
@@ -3473,6 +3498,11 @@ GetCommandLogLevel(Node *parsetree)
 			break;
 
 		case T_InsertRuleStmt:
+			lev = LOGSTMT_DDL;
+			break;
+
+		case T_DeleteRuleStmt:
+		case T_UpdateRuleStmt:
 			lev = LOGSTMT_DDL;
 			break;
 
