@@ -12,62 +12,66 @@
  */
 #include "postgres.h"
 
-#include "access/heapam.h"
+#include "access/genam.h"
 #include "access/htup_details.h"
-#include "access/xact.h"
 #include "access/table.h"
+#include "access/xact.h"
 #include "catalog/indexing.h"
 #include "catalog/pg_orca_rule.h"
 #include "commands/pg_orca_rule.h"
 #include "miscadmin.h"
 #include "utils/builtins.h"
+#include "utils/fmgroids.h"
 #include "utils/rel.h"
 
 /*
- * GetNextRuleId
- *		Return max(id)+1 so rule ids are auto-assigned and not reused.
+ * ParseRuleId
+ *		Convert a numeric parser node to a positive 32-bit rule id.
  */
-static int32
-GetNextRuleId(Relation rel)
+static int64
+ParseRuleId(Node *node)
 {
-	TableScanDesc scan;
-	HeapTuple	tup;
-	int32		maxid = 0;
+	int64		ruleid;
 
-	scan = table_beginscan_catalog(rel, 0, NULL);
-	while ((tup = heap_getnext(scan, ForwardScanDirection)) != NULL)
-	{
-		int32		id = ((Form_pg_orca_rule) GETSTRUCT(tup))->id;
+	if (IsA(node, Integer))
+		ruleid = intVal(node);
+	else if (IsA(node, Float))
+		ruleid = pg_strtoint64(castNode(Float, node)->fval);
+	else
+		elog(ERROR, "unexpected rule id node type: %d", (int) nodeTag(node));
 
-		if (id > maxid)
-			maxid = id;
-	}
-	table_endscan(scan);
+	if (ruleid <= 0 || ruleid > PG_UINT32_MAX)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("rule id must be a positive 32-bit integer")));
 
-	return maxid + 1;
+	return ruleid;
 }
 
 /*
- * FindRuleByScan
+ * FindRuleById
  *		Return a *copied* tuple whose id matches rule_id, or NULL.
  *		Caller must heap_freetuple() the returned tuple.
  */
 static HeapTuple
-FindRuleByScan(Relation rel, int32 rule_id)
+FindRuleById(Relation rel, int64 rule_id)
 {
-	TableScanDesc scan;
+	SysScanDesc scan;
+	ScanKeyData key;
 	HeapTuple	tup;
 
-	scan = table_beginscan_catalog(rel, 0, NULL);
-	while ((tup = heap_getnext(scan, ForwardScanDirection)) != NULL)
-	{
-		if (((Form_pg_orca_rule) GETSTRUCT(tup))->id == rule_id)
-			break;
-	}
+	ScanKeyInit(&key,
+				Anum_pg_orca_rule_id,
+				BTEqualStrategyNumber, F_INT8EQ,
+				Int64GetDatum(rule_id));
+
+	scan = systable_beginscan(rel, OrcaRuleIdIndexId, true,
+							  NULL, 1, &key);
+	tup = systable_getnext(scan);
 
 	if (tup != NULL)
 		tup = heap_copytuple(tup);
-	table_endscan(scan);
+	systable_endscan(scan);
 
 	return tup;
 }
@@ -109,14 +113,14 @@ ExecInsertRuleStmt(InsertRuleStmt *stmt)
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("rule text must not be empty")));
 
-	rel = table_open(OrcaRuleRelationId, AccessExclusiveLock);
+	rel = table_open(OrcaRuleRelationId, RowExclusiveLock);
 
 	memset(values, 0, sizeof(values));
 	memset(nulls, false, sizeof(nulls));
 
 	ruleoid = GetNewOidWithIndex(rel, OrcaRuleOidIndexId, Anum_pg_orca_rule_oid);
 	values[Anum_pg_orca_rule_oid - 1] = ObjectIdGetDatum(ruleoid);
-	values[Anum_pg_orca_rule_id - 1] = Int32GetDatum(GetNextRuleId(rel));
+	values[Anum_pg_orca_rule_id - 1] = Int64GetDatum((int64) ruleoid);
 
 	namestrcpy(&rname, stmt->rule_name);
 	values[Anum_pg_orca_rule_rule_name - 1] = NameGetDatum(&rname);
@@ -129,7 +133,7 @@ ExecInsertRuleStmt(InsertRuleStmt *stmt)
 	CatalogTupleInsert(rel, tup);
 	heap_freetuple(tup);
 
-	table_close(rel, AccessExclusiveLock);
+	table_close(rel, RowExclusiveLock);
 }
 
 /*
@@ -143,28 +147,24 @@ ExecDeleteRuleStmt(DeleteRuleStmt *stmt)
 {
 	Relation	rel;
 	HeapTuple	tup;
-	int32		ruleid;
+	int64		ruleid;
 
 	if (!superuser())
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("must be superuser to delete an ORCA rule")));
 
-	if (stmt->rule_id <= 0 || stmt->rule_id > PG_INT32_MAX)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("rule id must be a positive 32-bit integer")));
-	ruleid = (int32) stmt->rule_id;
+	ruleid = ParseRuleId(stmt->rule_id);
 
 	rel = table_open(OrcaRuleRelationId, RowExclusiveLock);
 
-	tup = FindRuleByScan(rel, ruleid);
+	tup = FindRuleById(rel, ruleid);
 	if (tup == NULL)
 	{
 		table_close(rel, RowExclusiveLock);
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
-				 errmsg("rule with id %d does not exist", ruleid)));
+				 errmsg("rule with id " INT64_FORMAT " does not exist", ruleid)));
 	}
 
 	CatalogTupleDelete(rel, &tup->t_self);
@@ -189,18 +189,14 @@ ExecUpdateRuleStmt(UpdateRuleStmt *stmt)
 	Datum		values[Natts_pg_orca_rule];
 	bool		nulls[Natts_pg_orca_rule];
 	bool		repl[Natts_pg_orca_rule];
-	int32		ruleid;
+	int64		ruleid;
 
 	if (!superuser())
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("must be superuser to update an ORCA rule")));
 
-	if (stmt->rule_id <= 0 || stmt->rule_id > PG_INT32_MAX)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("rule id must be a positive 32-bit integer")));
-	ruleid = (int32) stmt->rule_id;
+	ruleid = ParseRuleId(stmt->rule_id);
 
 	if (stmt->rule_text == NULL || stmt->rule_text[0] == '\0')
 		ereport(ERROR,
@@ -210,13 +206,13 @@ ExecUpdateRuleStmt(UpdateRuleStmt *stmt)
 	rel = table_open(OrcaRuleRelationId, RowExclusiveLock);
 	tupdesc = RelationGetDescr(rel);
 
-	tup = FindRuleByScan(rel, ruleid);
+	tup = FindRuleById(rel, ruleid);
 	if (tup == NULL)
 	{
 		table_close(rel, RowExclusiveLock);
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
-				 errmsg("rule with id %d does not exist", ruleid)));
+				 errmsg("rule with id " INT64_FORMAT " does not exist", ruleid)));
 	}
 
 	memset(values, 0, sizeof(values));

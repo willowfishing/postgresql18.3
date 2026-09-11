@@ -113,18 +113,24 @@ UPDATE RULE 999999 AS 'rule body';
 DELETE RULE 0;
 UPDATE RULE 0 AS 'rule body';
 
--- Rule ids must fit in a 32-bit int column.
+-- Rule ids accept the full positive 32-bit range.
 DELETE RULE 2147483648;
 UPDATE RULE 2147483648 AS 'rule body';
+DELETE RULE 4294967296;
+UPDATE RULE 4294967296 AS 'rule body';
 
 -- Empty update text is rejected.
 INSERT RULE 'mut_sample' AS 'body';
 SELECT id AS mut_sample_id FROM pg_orca_rule WHERE rule_name = 'mut_sample' \gset
+SELECT :mut_sample_id <> :mut_r1_id AS id_not_reused;
 UPDATE RULE :mut_sample_id AS '';
 
 -- Cannot modify the catalog in a read-only transaction.
 BEGIN READ ONLY;
 UPDATE RULE :mut_sample_id AS 'body v2';
+ROLLBACK;
+
+BEGIN READ ONLY;
 DELETE RULE :mut_sample_id;
 ROLLBACK;
 
@@ -166,15 +172,16 @@ DROP TABLE mutate_rule_event_log;
 -- Extra coverage: auto id, rowcount, WITH rejection, NULL checks
 --
 
--- Multiple new rules get distinct auto-assigned ids.
+-- Multiple new rules get distinct OID-backed ids.
 INSERT RULE 'extra_a' AS 'body a';
 INSERT RULE 'extra_b' AS 'body b';
 INSERT RULE 'extra_c' AS 'body c';
 
-SELECT id, rule_name, rule_text
+SELECT count(*) AS rule_count,
+	count(DISTINCT id) AS distinct_ids,
+	bool_and(id = oid::bigint) AS ids_match_oids
 FROM pg_orca_rule
-WHERE rule_name IN ('extra_a', 'extra_b', 'extra_c')
-ORDER BY id;
+WHERE rule_name IN ('extra_a', 'extra_b', 'extra_c');
 
 -- The id column is never null after INSERT.
 SELECT count(*) AS id_not_null
@@ -205,4 +212,4 @@ WHERE id = :auto_cnt_id;
 DELETE RULE :auto_cnt_id;
 \echo :ROW_COUNT
 SELECT count(*) AS cnt_from FROM pg_orca_rule WHERE id = :auto_cnt_id;
-
+\unset auto_cnt_id

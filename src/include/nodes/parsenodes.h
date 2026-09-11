@@ -4353,7 +4353,7 @@ typedef struct DeleteRuleStmt
 {
 	pg_node_attr(nodetag_number(481))
 	NodeTag		type;
-	int64		rule_id;		/* rule id to delete */
+	Node	   *rule_id;		/* numeric rule id to delete */
 } DeleteRuleStmt;
 
 /* ----------------------
@@ -4365,7 +4365,7 @@ typedef struct UpdateRuleStmt
 {
 	pg_node_attr(nodetag_number(482))
 	NodeTag		type;
-	int64		rule_id;		/* rule id to update */
+	Node	   *rule_id;		/* numeric rule id to update */
 	char	   *rule_text;		/* new rule DSL text */
 } UpdateRuleStmt;
 

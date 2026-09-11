@@ -139,26 +139,34 @@ DELETE RULE 0;
 ERROR:  rule id must be a positive 32-bit integer
 UPDATE RULE 0 AS 'rule body';
 ERROR:  rule id must be a positive 32-bit integer
--- Rule ids must fit in a 32-bit int column.
+-- Rule ids accept the full positive 32-bit range.
 DELETE RULE 2147483648;
-ERROR:  syntax error at or near "2147483648"
-LINE 1: DELETE RULE 2147483648;
-                    ^
+ERROR:  rule with id 2147483648 does not exist
 UPDATE RULE 2147483648 AS 'rule body';
-ERROR:  syntax error at or near "2147483648"
-LINE 1: UPDATE RULE 2147483648 AS 'rule body';
-                    ^
+ERROR:  rule with id 2147483648 does not exist
+DELETE RULE 4294967296;
+ERROR:  rule id must be a positive 32-bit integer
+UPDATE RULE 4294967296 AS 'rule body';
+ERROR:  rule id must be a positive 32-bit integer
 -- Empty update text is rejected.
 INSERT RULE 'mut_sample' AS 'body';
 SELECT id AS mut_sample_id FROM pg_orca_rule WHERE rule_name = 'mut_sample' \gset
+SELECT :mut_sample_id <> :mut_r1_id AS id_not_reused;
+ id_not_reused 
+---------------
+ t
+(1 row)
+
 UPDATE RULE :mut_sample_id AS '';
 ERROR:  rule text must not be empty
 -- Cannot modify the catalog in a read-only transaction.
 BEGIN READ ONLY;
 UPDATE RULE :mut_sample_id AS 'body v2';
 ERROR:  cannot execute UPDATE RULE in a read-only transaction
+ROLLBACK;
+BEGIN READ ONLY;
 DELETE RULE :mut_sample_id;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ERROR:  cannot execute DELETE RULE in a read-only transaction
 ROLLBACK;
 -- Only superusers may update / delete rules.
 CREATE ROLE regress_mut_rule_user;
@@ -197,20 +205,19 @@ DROP TABLE mutate_rule_event_log;
 --
 -- Extra coverage: auto id, rowcount, WITH rejection, NULL checks
 --
--- Multiple new rules get distinct auto-assigned ids.
+-- Multiple new rules get distinct OID-backed ids.
 INSERT RULE 'extra_a' AS 'body a';
 INSERT RULE 'extra_b' AS 'body b';
 INSERT RULE 'extra_c' AS 'body c';
-SELECT id, rule_name, rule_text
+SELECT count(*) AS rule_count,
+	count(DISTINCT id) AS distinct_ids,
+	bool_and(id = oid::bigint) AS ids_match_oids
 FROM pg_orca_rule
-WHERE rule_name IN ('extra_a', 'extra_b', 'extra_c')
-ORDER BY id;
- id | rule_name | rule_text 
-----+-----------+-----------
-  5 | extra_a   | body a
-  6 | extra_b   | body b
-  7 | extra_c   | body c
-(3 rows)
+WHERE rule_name IN ('extra_a', 'extra_b', 'extra_c');
+ rule_count | distinct_ids | ids_match_oids 
+------------+--------------+----------------
+          3 |            3 | t
+(1 row)
 
 -- The id column is never null after INSERT.
 SELECT count(*) AS id_not_null
@@ -264,3 +271,4 @@ SELECT count(*) AS cnt_from FROM pg_orca_rule WHERE id = :auto_cnt_id;
         0
 (1 row)
 
+\unset auto_cnt_id

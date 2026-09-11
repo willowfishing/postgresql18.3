@@ -1,0 +1,12 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1insert s2insert s1commit s2check
+step s1insert: INSERT RULE 'isolation_a' AS 'body a';
+step s2insert: INSERT RULE 'isolation_b' AS 'body b';
+step s1commit: COMMIT;
+step s2check: SELECT count(*) = 2 AND count(DISTINCT id) = 2 AS distinct_ids FROM pg_orca_rule WHERE rule_name IN ('isolation_a', 'isolation_b');
+distinct_ids
+------------
+t           
+(1 row)
+

@@ -312,7 +312,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
 %type <node>	select_no_parens select_with_parens select_clause
 				simple_select values_clause
-				PLpgSQL_Expr PLAssignStmt
+				PLpgSQL_Expr PLAssignStmt RuleId
 
 %type <str>			opt_single_name
 %type <list>		opt_qualified_name
@@ -12265,7 +12265,7 @@ InsertRuleStmt:
 		;
 
 DeleteRuleStmt:
-			opt_with_clause DELETE_P RULE ICONST
+			opt_with_clause DELETE_P RULE RuleId
 				{
 					DeleteRuleStmt *n = makeNode(DeleteRuleStmt);
 
@@ -12277,7 +12277,7 @@ DeleteRuleStmt:
 		;
 
 UpdateRuleStmt:
-			opt_with_clause UPDATE RULE ICONST AS Sconst
+			opt_with_clause UPDATE RULE RuleId AS Sconst
 				{
 					UpdateRuleStmt *n = makeNode(UpdateRuleStmt);
 
@@ -12287,6 +12287,11 @@ UpdateRuleStmt:
 					n->rule_text = $6;
 					$$ = (Node *) n;
 				}
+		;
+
+RuleId:
+			ICONST								{ $$ = (Node *) makeInteger($1); }
+			| FCONST							{ $$ = (Node *) makeFloat($1); }
 		;
 
 /*

@@ -53,13 +53,17 @@ jobs:
       - name: Run core regression tests
         run: make -C src/test/regress check
 
-      - name: Upload regression diffs
+      - name: Run isolation tests
+        run: make -C src/test/isolation check
+
+      - name: Upload test diffs
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: regression-diffs
+          name: test-diffs
           path: |
             tmp_install/log/
             src/test/regress/regression.diffs
             src/test/regress/log/
+            src/test/isolation/output_iso/
           if-no-files-found: ignore
